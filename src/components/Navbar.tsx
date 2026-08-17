@@ -64,9 +64,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
           </div>
-          <span className="text-xs font-mono text-slate-400 border-l border-slate-700 pl-2.5 hidden md:inline">
-            Official Letterhead Generator
-          </span>
         </div>
       </div>
 
