@@ -72,8 +72,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-3">
-        {/* Template Badge or Switcher */}
-        {organizations.length > 1 ? (
+        {/* Template Switcher (if multiple channels exist) */}
+        {organizations.length > 1 && (
           <div className="relative">
             <button
               type="button"
@@ -117,11 +117,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 })}
               </div>
             )}
-          </div>
-        ) : (
-          <div className="px-3 py-1.5 bg-[#1e222b] border border-[#2e3442] text-xs font-semibold rounded text-teal-300 flex items-center gap-1.5">
-            <Building className="w-3.5 h-3.5 text-teal-400" />
-            <span>Official Letterhead</span>
           </div>
         )}
 
