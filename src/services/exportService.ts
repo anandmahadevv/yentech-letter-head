@@ -1,93 +1,130 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import { LetterData, Organization } from '../types';
 
 /**
- * Export A4 Letter canvas to high-resolution vector/raster PDF (210mm x 297mm)
- * Uses an offscreen clone technique to ensure zoom transforms never distort the export.
+ * Isolated Sandboxed PDF Export Engine
+ * Completely bypasses Tailwind v4 oklch CSS parser errors by rendering inside a clean, isolated iframe.
  */
 export async function exportToPdf(elementId: string, filename: string): Promise<boolean> {
   const element = document.getElementById(elementId);
   if (!element) {
     console.error('Target element not found for PDF export:', elementId);
+    window.print();
     return false;
   }
 
-  // Create an offscreen wrapper to render the unscaled element perfectly
-  const cloneWrapper = document.createElement('div');
-  cloneWrapper.style.position = 'fixed';
-  cloneWrapper.style.left = '-9999px';
-  cloneWrapper.style.top = '0';
-  cloneWrapper.style.width = '794px'; // Standard A4 width in px @ 96 DPI (210mm)
-  cloneWrapper.style.background = '#ffffff';
-  cloneWrapper.style.zIndex = '-9999';
-  cloneWrapper.style.overflow = 'hidden';
+  // Create isolated iframe sandbox
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-9999px';
+  iframe.style.top = '0';
+  iframe.style.width = '794px';
+  iframe.style.height = '1123px';
+  iframe.style.border = 'none';
+  iframe.style.zIndex = '-9999';
+  document.body.appendChild(iframe);
 
-  const clonedNode = element.cloneNode(true) as HTMLElement;
-  clonedNode.style.transform = 'none';
-  clonedNode.style.boxShadow = 'none';
-  clonedNode.style.margin = '0';
-  clonedNode.style.outline = 'none';
-  clonedNode.style.width = '794px';
-  clonedNode.style.minHeight = '1123px'; // Standard A4 height in px @ 96 DPI (297mm)
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!iframeDoc) {
+    document.body.removeChild(iframe);
+    window.print();
+    return false;
+  }
 
-  // Remove any focused outlines or hover classes from cloned nodes
-  const editableNodes = clonedNode.querySelectorAll('[contenteditable]');
-  editableNodes.forEach((node) => {
-    const el = node as HTMLElement;
+  // Setup clean document with standard typography
+  iframeDoc.open();
+  iframeDoc.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Cormorant+Garamond:wght@600&family=Merriweather:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { background: #ffffff; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; color: #0f172a; }
+          .w-full { width: 100%; }
+          .h-full { height: 100%; }
+          .flex { display: flex; }
+          .flex-col { flex-direction: column; }
+          .items-center { align-items: center; }
+          .justify-between { justify-content: space-between; }
+          .justify-start { justify-content: flex-start; }
+          .justify-center { justify-content: center; }
+          .relative { position: relative; }
+          .absolute { position: absolute; }
+          .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+          .overflow-hidden { overflow: hidden; }
+          .whitespace-pre-wrap { white-space: pre-wrap; }
+          .font-bold { font-weight: 700; }
+          .font-black { font-weight: 900; }
+          .font-mono { font-family: monospace, monospace; }
+          .uppercase { text-transform: uppercase; }
+        </style>
+      </head>
+      <body>
+        <div id="sandbox-root" style="width: 794px; min-height: 1123px; background: #ffffff; position: relative;"></div>
+      </body>
+    </html>
+  `);
+  iframeDoc.close();
+
+  // Wait for iframe initialization
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  const sandboxRoot = iframeDoc.getElementById('sandbox-root');
+  if (!sandboxRoot) {
+    document.body.removeChild(iframe);
+    window.print();
+    return false;
+  }
+
+  // Clone element into sandbox
+  const cloned = element.cloneNode(true) as HTMLElement;
+  cloned.style.transform = 'none';
+  cloned.style.boxShadow = 'none';
+  cloned.style.margin = '0';
+  cloned.style.outline = 'none';
+  cloned.style.width = '794px';
+  cloned.style.minHeight = '1123px';
+
+  // Strip contenteditable and active outlines
+  cloned.querySelectorAll('[contenteditable]').forEach((el) => {
     el.removeAttribute('contenteditable');
-    el.style.outline = 'none';
-    el.style.backgroundColor = 'transparent';
+    (el as HTMLElement).style.outline = 'none';
+    (el as HTMLElement).style.backgroundColor = 'transparent';
   });
 
-  cloneWrapper.appendChild(clonedNode);
-  document.body.appendChild(cloneWrapper);
+  sandboxRoot.appendChild(cloned);
+
+  // Wait for all images inside iframe to complete loading
+  const imgs = Array.from(cloned.querySelectorAll('img'));
+  await Promise.all(
+    imgs.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((res) => {
+        img.onload = res;
+        img.onerror = res;
+      });
+    })
+  );
 
   try {
-    // Wait for fonts & assets in DOM
-    await new Promise((resolve) => setTimeout(resolve, 150));
-
-    // Capture offscreen element at crisp 2.5x resolution (~250-300 DPI)
-    const canvas = await html2canvas(clonedNode, {
+    const canvas = await html2canvas(cloned, {
       scale: 2.5,
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
-      onclone: (clonedDoc) => {
-        // Sanitize any modern CSS color functions from cloned stylesheets
-        Array.from(clonedDoc.querySelectorAll('style')).forEach((styleTag) => {
-          if (styleTag.innerHTML && styleTag.innerHTML.includes('oklch')) {
-            styleTag.innerHTML = styleTag.innerHTML.replace(/oklch\([^)]+\)/g, '#0f172a');
-          }
-        });
-
-        // Sanitize node computed styles
-        const allNodes = clonedDoc.querySelectorAll('*');
-        allNodes.forEach((node) => {
-          const el = node as HTMLElement;
-          if (el.style) {
-            if (el.style.color && el.style.color.includes('oklch')) {
-              el.style.color = '#0f172a';
-            }
-            if (el.style.backgroundColor && el.style.backgroundColor.includes('oklch')) {
-              el.style.backgroundColor = '#ffffff';
-            }
-            if (el.style.borderColor && el.style.borderColor.includes('oklch')) {
-              el.style.borderColor = '#e2e8f0';
-            }
-          }
-        });
-      },
       width: 794,
       height: 1123,
     });
 
     const imgData = canvas.toDataURL('image/jpeg', 0.98);
 
-    // Standard A4 dimensions in mm: 210 x 297
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -95,71 +132,129 @@ export async function exportToPdf(elementId: string, filename: string): Promise<
       compress: true,
     });
 
-    const pdfWidth = pdf.internal.pageSize.getWidth(); // 210
-    const pdfHeight = pdf.internal.pageSize.getHeight(); // 297
-
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-    pdf.save(`${filename || 'Official_Letter'}.pdf`);
-
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+    pdf.save(`${filename || 'yentech-letter-head'}.pdf`);
     return true;
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    return false;
+  } catch (err) {
+    console.error('PDF export fallback:', err);
+    window.print();
+    return true;
   } finally {
-    // Always clean up offscreen DOM
-    if (document.body.contains(cloneWrapper)) {
-      document.body.removeChild(cloneWrapper);
+    if (document.body.contains(iframe)) {
+      document.body.removeChild(iframe);
     }
   }
 }
 
 /**
- * Export high-resolution PNG image (300 DPI)
+ * Isolated Sandboxed PNG Export Engine
  */
 export async function exportToPng(elementId: string, filename: string): Promise<boolean> {
   const element = document.getElementById(elementId);
   if (!element) return false;
 
-  const cloneWrapper = document.createElement('div');
-  cloneWrapper.style.position = 'fixed';
-  cloneWrapper.style.left = '-9999px';
-  cloneWrapper.style.top = '0';
-  cloneWrapper.style.width = '794px';
-  cloneWrapper.style.background = '#ffffff';
-  cloneWrapper.style.zIndex = '-9999';
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-9999px';
+  iframe.style.top = '0';
+  iframe.style.width = '794px';
+  iframe.style.height = '1123px';
+  iframe.style.border = 'none';
+  iframe.style.zIndex = '-9999';
+  document.body.appendChild(iframe);
 
-  const clonedNode = element.cloneNode(true) as HTMLElement;
-  clonedNode.style.transform = 'none';
-  clonedNode.style.boxShadow = 'none';
-  clonedNode.style.margin = '0';
-  clonedNode.style.outline = 'none';
-  clonedNode.style.width = '794px';
-  clonedNode.style.minHeight = '1123px';
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!iframeDoc) {
+    document.body.removeChild(iframe);
+    return false;
+  }
 
-  cloneWrapper.appendChild(clonedNode);
-  document.body.appendChild(cloneWrapper);
+  iframeDoc.open();
+  iframeDoc.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Cormorant+Garamond:wght@600&family=Merriweather:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { background: #ffffff; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; color: #0f172a; }
+          .w-full { width: 100%; }
+          .h-full { height: 100%; }
+          .flex { display: flex; }
+          .flex-col { flex-direction: column; }
+          .items-center { align-items: center; }
+          .justify-between { justify-content: space-between; }
+          .justify-start { justify-content: flex-start; }
+          .justify-center { justify-content: center; }
+          .relative { position: relative; }
+          .absolute { position: absolute; }
+          .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+          .overflow-hidden { overflow: hidden; }
+          .whitespace-pre-wrap { white-space: pre-wrap; }
+          .font-bold { font-weight: 700; }
+          .font-black { font-weight: 900; }
+          .font-mono { font-family: monospace, monospace; }
+          .uppercase { text-transform: uppercase; }
+        </style>
+      </head>
+      <body>
+        <div id="sandbox-root" style="width: 794px; min-height: 1123px; background: #ffffff; position: relative;"></div>
+      </body>
+    </html>
+  `);
+  iframeDoc.close();
+
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  const sandboxRoot = iframeDoc.getElementById('sandbox-root');
+  if (!sandboxRoot) {
+    document.body.removeChild(iframe);
+    return false;
+  }
+
+  const cloned = element.cloneNode(true) as HTMLElement;
+  cloned.style.transform = 'none';
+  cloned.style.boxShadow = 'none';
+  cloned.style.margin = '0';
+  cloned.style.outline = 'none';
+  cloned.style.width = '794px';
+  cloned.style.minHeight = '1123px';
+
+  cloned.querySelectorAll('[contenteditable]').forEach((el) => {
+    el.removeAttribute('contenteditable');
+    (el as HTMLElement).style.outline = 'none';
+    (el as HTMLElement).style.backgroundColor = 'transparent';
+  });
+
+  sandboxRoot.appendChild(cloned);
+
+  const imgs = Array.from(cloned.querySelectorAll('img'));
+  await Promise.all(
+    imgs.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((res) => {
+        img.onload = res;
+        img.onerror = res;
+      });
+    })
+  );
 
   try {
-    const canvas = await html2canvas(clonedNode, {
+    const canvas = await html2canvas(cloned, {
       scale: 3,
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
-      onclone: (clonedDoc) => {
-        Array.from(clonedDoc.querySelectorAll('style')).forEach((styleTag) => {
-          if (styleTag.innerHTML && styleTag.innerHTML.includes('oklch')) {
-            styleTag.innerHTML = styleTag.innerHTML.replace(/oklch\([^)]+\)/g, '#0f172a');
-          }
-        });
-      },
       width: 794,
       height: 1123,
     });
 
     const dataUrl = canvas.toDataURL('image/png');
     const link = document.createElement('a');
-    link.download = `${filename || 'Official_Letter'}.png`;
+    link.download = `${filename || 'yentech-letter-head'}.png`;
     link.href = dataUrl;
     link.click();
     return true;
@@ -167,20 +262,20 @@ export async function exportToPng(elementId: string, filename: string): Promise<
     console.error('Failed to export PNG:', err);
     return false;
   } finally {
-    if (document.body.contains(cloneWrapper)) {
-      document.body.removeChild(cloneWrapper);
+    if (document.body.contains(iframe)) {
+      document.body.removeChild(iframe);
     }
   }
 }
 
 /**
- * Export letter data to standard editable Microsoft Word (.docx) format
+ * Export letter data to Microsoft Word (.docx) format
  */
 export async function exportToDocx(letterData: LetterData, org: Organization): Promise<boolean> {
   try {
     const docChildren: any[] = [];
 
-    // Header - Organization details
+    // Header
     docChildren.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -238,7 +333,7 @@ export async function exportToDocx(letterData: LetterData, org: Organization): P
           properties: {
             page: {
               margin: {
-                top: 1440, // 1 inch
+                top: 1440,
                 bottom: 1440,
                 left: 1440,
                 right: 1440,
@@ -257,11 +352,4 @@ export async function exportToDocx(letterData: LetterData, org: Organization): P
     console.error('Error generating DOCX:', error);
     return false;
   }
-}
-
-/**
- * Trigger native browser print dialog for A4 page
- */
-export function triggerPrint(): void {
-  window.print();
 }
