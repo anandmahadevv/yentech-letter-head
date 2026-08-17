@@ -45,7 +45,8 @@ export const LetterheadBackground: React.FC<LetterheadBackgroundProps> = ({ org,
         <img
           src="/yentech_cropped_watermark.png"
           alt="YenTech Watermark"
-          className="w-[420px] h-auto object-contain opacity-[0.05] select-none"
+          className="w-[420px] h-auto object-contain select-none"
+          style={{ opacity: 0.04 }}
         />
       </div>
 
