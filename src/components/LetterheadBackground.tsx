@@ -4,9 +4,20 @@ import { Organization } from '../types';
 interface LetterheadBackgroundProps {
   org: Organization;
   showGrid?: boolean;
+  isContinuationPage?: boolean;
+  pageNumber?: number;
+  totalPages?: number;
+  refNumber?: string;
 }
 
-export const LetterheadBackground: React.FC<LetterheadBackgroundProps> = ({ org, showGrid = true }) => {
+export const LetterheadBackground: React.FC<LetterheadBackgroundProps> = ({
+  org,
+  showGrid = true,
+  isContinuationPage = false,
+  pageNumber = 1,
+  totalPages = 1,
+  refNumber,
+}) => {
   // If custom uploaded image letterhead
   if (org.letterheadType === 'custom-image' && org.customLetterheadUrl) {
     return (
@@ -45,53 +56,69 @@ export const LetterheadBackground: React.FC<LetterheadBackgroundProps> = ({ org,
         <img
           src="/yentech_cropped_watermark.png"
           alt="YenTech Watermark"
-          className="w-[420px] h-auto object-contain select-none"
-          style={{ opacity: 0.04 }}
+          className="w-[380px] h-auto object-contain select-none"
+          style={{ opacity: isContinuationPage ? 0.03 : 0.04 }}
         />
       </div>
 
       {/* ===================== TOP HEADER BLOCK ===================== */}
-      <div
-        className="w-full relative px-10 pt-8 pb-5 flex items-center justify-between z-10"
-        style={{ borderBottom: '1px solid #e2e8f0' }}
-      >
-        {/* Top Left: Title & Email in Poppins font (Reduced slightly) */}
-        <div className="flex flex-col justify-center">
-          <h2
-            className="text-lg md:text-xl font-bold tracking-tight leading-tight"
-            style={{
-              color: '#179091', // Official Teal
-              fontFamily: "'Poppins', sans-serif",
-            }}
-          >
-            {org.name}
-          </h2>
-          <p
-            className="text-[11px] md:text-xs font-normal tracking-normal mt-0.5"
-            style={{
-              color: '#545353',
-              fontFamily: "'Poppins', sans-serif",
-            }}
-          >
-            yentech.yset@gmail.com
-          </p>
+      {isContinuationPage ? (
+        /* CLEAN CONTINUATION SHEET HEADER (NO BIG TITLE / BANNER / LOGO / NO REF NO) */
+        <div
+          className="w-full relative px-10 pt-5 pb-2.5 flex items-center justify-between z-10 text-[11px]"
+          style={{ borderBottom: '1px solid #e2e8f0' }}
+        >
+          <div className="flex items-center gap-2 font-mono">
+            <span className="font-bold text-[#179091]">{org.name}</span>
+          </div>
+          <div className="font-mono text-slate-500 text-[10.5px]">
+            Page {pageNumber} of {totalPages}
+          </div>
         </div>
+      ) : (
+        /* FULL FIRST PAGE OFFICIAL LETTERHEAD HEADER */
+        <div
+          className="w-full relative px-10 pt-8 pb-5 flex items-center justify-between z-10"
+          style={{ borderBottom: '1px solid #e2e8f0' }}
+        >
+          {/* Top Left: Title & Email in Poppins font */}
+          <div className="flex flex-col justify-center">
+            <h2
+              className="text-lg md:text-xl font-bold tracking-tight leading-tight"
+              style={{
+                color: '#179091', // Official Teal
+                fontFamily: "'Poppins', sans-serif",
+              }}
+            >
+              {org.name}
+            </h2>
+            <p
+              className="text-[11px] md:text-xs font-normal tracking-normal mt-0.5"
+              style={{
+                color: '#545353',
+                fontFamily: "'Poppins', sans-serif",
+              }}
+            >
+              yentech.yset@gmail.com
+            </p>
+          </div>
 
-        {/* Top Right: Official Yentech Logo (Calibrated to 3.2x Scale) */}
-        <div className="flex items-center justify-end">
-          <img
-            src="/yentech_cropped_logo.png"
-            alt="Yentech Logo"
-            className="w-auto object-contain drop-shadow-xs"
-            style={{
-              height: '52px',
-              maxWidth: '215px',
-            }}
-          />
+          {/* Top Right: Official Yentech Logo */}
+          <div className="flex items-center justify-end">
+            <img
+              src="/yentech_cropped_logo.png"
+              alt="Yentech Logo"
+              className="w-auto object-contain drop-shadow-xs"
+              style={{
+                height: '52px',
+                maxWidth: '215px',
+              }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ===================== BOTTOM FOOTER (ONLY TEAL BAR & EMAIL) ===================== */}
+      {/* ===================== BOTTOM FOOTER (TEAL BAR & EMAIL) ===================== */}
       <div className="w-full relative z-10">
         {/* Teal Accent Bar from Template */}
         <div
@@ -101,7 +128,7 @@ export const LetterheadBackground: React.FC<LetterheadBackgroundProps> = ({ org,
 
         {/* Clean Footer - ONLY email id */}
         <div
-          className="w-full px-10 py-3 bg-white flex items-center justify-start text-[11px]"
+          className="w-full px-10 py-3 bg-white flex items-center justify-between text-[11px]"
           style={{
             fontFamily: "'Poppins', sans-serif",
             color: '#545353',
@@ -110,6 +137,11 @@ export const LetterheadBackground: React.FC<LetterheadBackgroundProps> = ({ org,
           <span className="font-normal tracking-wide">
             yentech.yset@gmail.com
           </span>
+          {isContinuationPage && (
+            <span className="font-mono text-[10px] text-slate-400">
+              Page {pageNumber} of {totalPages}
+            </span>
+          )}
         </div>
       </div>
     </div>

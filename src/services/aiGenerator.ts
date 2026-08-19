@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+﻿import { GoogleGenerativeAI } from '@google/generative-ai';
 import { LetterData, Organization, RecipientInfo } from '../types';
 
 export interface GenerateLetterParams {
@@ -70,10 +70,10 @@ export function generateSmartLocalLetter(params: GenerateLetterParams): LetterDa
     table = {
       headers: ['Parameter / Item', 'Specifications & Details'],
       rows: [
-        ['Proposed Activity', 'Hands-on Technical Workshop & Hands-on Lab'],
-        ['Target Audience', 'Students across CSE / IT / ECE & PG Programs'],
-        ['Venue Requisition', 'Computing Lab 3 / Central Seminar Hall'],
-        ['Required Amenities', 'High-speed LAN/Wi-Fi, AV Projector & Audio Setup'],
+        ['Proposed Activity', 'Hands-on Technical Workshop & Lab Session'],
+        ['Target Audience', 'Students across Engineering & Technology Departments'],
+        ['Venue Requisition', 'Computing Center / Central Seminar Hall'],
+        ['Required Amenities', 'High-speed Internet, AV Projector & Audio Setup'],
       ],
     };
 
@@ -89,46 +89,13 @@ export function generateSmartLocalLetter(params: GenerateLetterParams): LetterDa
       headers: ['Expenditure Category', 'Description', 'Allocated (INR)'],
       rows: [
         ['Keynote Speaker Honorarium', 'Travel & Hospitality for Guest Dignitaries', '₹ 8,000'],
-        ['Merit Prizes & Trophies', 'Cash awards & shields for 1st, 2nd & 3rd place', '₹ 25,000'],
+        ['Merit Prizes & Trophies', 'Awards & certificates for student finalists', '₹ 25,000'],
         ['Participant Refreshments', 'High-tea & lunch arrangements for participants', '₹ 7,000'],
-        ['Stationery & Event Kits', 'Badges, certificates, banners & documentation', '₹ 5,000'],
-        ['Total Estimated Grant', 'Complete requisition amount for the event', '₹ 45,000'],
+        ['Total Estimated Grant', 'Complete requisition amount for the event', '₹ 40,000'],
       ],
     };
 
     callToAction = 'We respectfully request you to review the itemized budget proposal and accord formal financial sanction to facilitate timely vendor coordination and prize disbursements.';
-  } else if (letterTypeId === 'guest-invitation' || context.toLowerCase().includes('invitation') || context.toLowerCase().includes('guest')) {
-    paragraphs = [
-      `It is our distinct privilege and honor to reach out to you on behalf of the ${org.name}, ${org.parentInstitution}. Our institution has been at the forefront of technical excellence, research, and holistic student development.`,
-      context.trim() || `We take immense pleasure in cordially inviting you as our Esteemed Chief Guest & Keynote Speaker for our forthcoming National Technical Conclave. Your pioneering contributions and distinguished industry leadership would serve as a profound inspiration to our student innovators and faculty scholars.`,
-      `The convention will witness an audience of over 500 aspiring engineers, researchers, and tech enthusiasts eager to gain insights from your distinguished professional journey. Our committee shall gladly undertake all arrangements pertaining to your local reception, hospitality, and scheduling convenience.`,
-    ];
-
-    table = {
-      headers: ['Session Component', 'Proposed Schedule & Details'],
-      rows: [
-        ['Event Title', 'National Technical Conclave & Innovation Summit 2026'],
-        ['Format & Role', 'Keynote Address (30 Mins) followed by Q&A (15 Mins)'],
-        ['Audience Profile', 'B.Tech, M.Tech Scholars & Department Faculty Members'],
-        ['Hospitality & Travel', 'Coordinated directly by our Executive Liaison Team'],
-      ],
-    };
-
-    callToAction = 'We earnestly hope that your schedule permits you to grace this momentous occasion. We kindly request you to communicate your gracious acceptance at your earliest convenience.';
-  } else if (letterTypeId === 'duty-leave' || context.toLowerCase().includes('duty leave') || context.toLowerCase().includes('attendance')) {
-    paragraphs = [
-      `We respectfully submit this representation on behalf of the ${org.name} regarding the grant of On-Duty (OD) attendance credit for our designated student organizers and competitive delegates.`,
-      context.trim() || `The student members listed in the enclosure have been entrusted with critical organizational duties, system infrastructure setup, and representation of our institute in major national-level hackathons and technical symposiums.`,
-      `As these responsibilities required full-time on-site deployment during academic hours, we request that their absence from regular class sessions and laboratory practicals be condoned with official OD attendance credit in the university attendance portal.`,
-    ];
-
-    enclosures = [
-      'Nominal Roll of Student Organizers with Roll Numbers & Semesters',
-      'Duty Allocation Roster & Event Proof of Participation',
-      'Faculty Advisor Verification Certificate',
-    ];
-
-    callToAction = 'We kindly request your good office to issue necessary directives to the respective subject faculty members and the academic attendance cell to record the On-Duty status for the specified dates.';
   } else {
     // General Formal Letter
     paragraphs = [
@@ -166,10 +133,10 @@ export function generateSmartLocalLetter(params: GenerateLetterParams): LetterDa
     },
     copiesTo,
     enclosures,
-    fontFamily: 'Inter',
+    fontFamily: 'Plus Jakarta Sans',
     fontSizePt: 11,
     lineSpacing: 'normal',
-    textAlign: 'justify',
+    textAlign: 'left',
     images: {
       letterheadUrl: org.customLetterheadUrl,
       letterheadOpacity: 1,
@@ -201,56 +168,20 @@ export async function generateGeminiAiLetter(params: GenerateLetterParams): Prom
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
-You are an expert institutional registrar and official correspondence officer for prestigious engineering universities.
-Write a formal, highly articulate, polite, and authoritative Indian/international academic official letter for:
-
+You are an expert institutional registrar and official correspondence officer.
+Write a formal, highly articulate, polite academic letter for:
 Organization: "${params.org.name}" (${params.org.parentInstitution})
 Letter Type: "${params.letterTypeName}"
-Recipient Title: "${params.recipient.title}"
-Recipient Department: "${params.recipient.department}"
-Recipient Institution: "${params.recipient.institution || params.org.parentInstitution}"
 Subject Given: "${params.subject}"
-Context Provided by User: "${params.context}"
-Signatory: "${params.signatoryName || params.org.defaultSignatoryName}", "${params.signatoryDesignation || params.org.defaultDesignation}"
-Date: "${params.dateStr}"
+Context Provided: "${params.context}"
 
-CRITICAL FORMATTING INSTRUCTIONS:
-1. The tone must be respectful, polished, formal, and precise.
-2. Structure the letter into 3-4 crisp paragraphs that fit cleanly on 1 standard A4 letterhead page.
-3. If the context mentions dates, schedule, numbers, participant counts, or budget, provide an organized summary table.
-4. Output STRICTLY a valid JSON object with the following structure (no markdown fences, no explanatory preamble):
-{
-  "subject": "Refined formal subject string starting with 'Request for...' or 'Requisition for...' or 'Invitation for...'",
-  "salutation": "Respected Sir/Madam,",
-  "bodyParagraphs": [
-    "Paragraph 1: Introduction and formal purpose...",
-    "Paragraph 2: Contextual justification, dates, scale, details...",
-    "Paragraph 3: Organizational assurances, faculty mentorship, discipline..."
-  ],
-  "keyDetailsTable": {
-    "headers": ["Parameter / Header", "Details / Value"],
-    "rows": [
-      ["Item 1", "Value 1"],
-      ["Item 2", "Value 2"]
-    ]
-  },
-  "callToAction": "Final polite request for approval and signature...",
-  "copiesTo": [
-    "1. The Dean (Student Affairs), Institution Name",
-    "2. The Faculty Advisor, Club Name",
-    "3. Office Records"
-  ],
-  "enclosures": [
-    "Detailed Event Schedule & Proposal",
-    "List of Student Participants / Organizers"
-  ]
-}
+CRITICAL INSTRUCTIONS:
+1. Ensure the text fits on 1 single A4 page cleanly.
+2. Return JSON object with subject, salutation, bodyParagraphs array, optional keyDetailsTable, callToAction.
 `;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
-
-    // Clean JSON markdown fences if present
     const cleanJson = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
     const parsed = JSON.parse(cleanJson);
 
@@ -260,17 +191,12 @@ CRITICAL FORMATTING INSTRUCTIONS:
       letterType: params.letterTypeId,
       refNumber: generateReferenceNumber(params.org.refCodePrefix),
       date: params.dateStr || getFormattedDate(),
-      recipient: {
-        title: params.recipient.title,
-        department: params.recipient.department,
-        institution: params.recipient.institution || params.org.parentInstitution,
-        location: params.recipient.location || 'Main Academic Block',
-      },
+      recipient: params.recipient,
       subject: parsed.subject || params.subject,
       salutation: parsed.salutation || 'Respected Sir/Madam,',
       bodyParagraphs: Array.isArray(parsed.bodyParagraphs) ? parsed.bodyParagraphs : [params.context],
       keyDetailsTable: parsed.keyDetailsTable?.headers?.length ? parsed.keyDetailsTable : undefined,
-      callToAction: parsed.callToAction || 'We kindly request your favorable approval and guidance.',
+      callToAction: parsed.callToAction || 'We kindly request your favorable approval.',
       signatory: {
         closing: 'Yours faithfully,',
         name: params.signatoryName || params.org.defaultSignatoryName,
@@ -280,27 +206,66 @@ CRITICAL FORMATTING INSTRUCTIONS:
       },
       copiesTo: Array.isArray(parsed.copiesTo) ? parsed.copiesTo : [],
       enclosures: Array.isArray(parsed.enclosures) ? parsed.enclosures : [],
-      fontFamily: 'Inter',
+      fontFamily: 'Plus Jakarta Sans',
       fontSizePt: 11,
       lineSpacing: 'normal',
-      textAlign: 'justify',
+      textAlign: 'left',
       images: {
-        letterheadUrl: params.org.customLetterheadUrl,
         letterheadOpacity: 1,
-        logoUrl: params.org.images?.logoUrl,
-        logoSize: 64,
-        signatureUrl: params.org.images?.signatureUrl,
-        signatureWidth: 130,
-        stampUrl: params.org.images?.stampUrl,
+        logoSize: 52,
+        signatureWidth: 140,
         stampOpacity: 0.85,
         stampRotation: -8,
         stampSize: 85,
         showStamp: false,
-        showSignature: true,
+        showSignature: false,
       },
     };
   } catch (error) {
-    console.warn('Gemini API call failed or timed out. Falling back to high-accuracy local smart generator:', error);
+    console.warn('Gemini API call failed, using local smart generator:', error);
     return generateSmartLocalLetter(params);
   }
+}
+
+/**
+ * Intelligent Text Condenser to Fit Single Page A4
+ */
+export async function condenseParagraphsToFit(
+  paragraphs: string[],
+  apiKey?: string
+): Promise<string[]> {
+  const fullText = paragraphs.join('\n\n');
+  if (!fullText.trim()) return paragraphs;
+
+  if (apiKey && apiKey.trim() !== '') {
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const prompt = `
+Condense the following official letter paragraphs so they are ~25-30% shorter to fit comfortably on 1 standard A4 letterhead page.
+Preserve all crucial facts, dates, venues, quantities, and respectful tone. Return ONLY the condensed paragraphs separated by blank lines.
+
+Text to condense:
+${fullText}
+`;
+      const res = await model.generateContent(prompt);
+      const output = res.response.text().trim();
+      const condensed = output.split('\n\n').filter((p) => p.trim() !== '');
+      if (condensed.length > 0) return condensed;
+    } catch (e) {
+      console.warn('AI condensation failed, using local sentence compression', e);
+    }
+  }
+
+  // Local rule-based condensation
+  return paragraphs.map((p) => {
+    return p
+      .replace(/We are pleased to bring to your kind notice that/gi, 'We wish to inform you that')
+      .replace(/We have the honor to submit this official communication on behalf of/gi, 'On behalf of')
+      .replace(/In light of the educational and skill-development value of this initiative,/gi, 'Given the educational value,')
+      .replace(/All participating students and organizers will maintain utmost discipline and ensure that academic schedules remain undisturbed\./gi, 'Academic schedules and campus discipline will be strictly maintained.')
+      .replace(/seeking institutional sanction and financial allocation for upcoming flagship academic and student innovation endeavors\./gi, 'requesting sanction and allocation for upcoming student academic initiatives.')
+      .replace(/We respectfully request you to review the itemized budget proposal and accord formal financial sanction to facilitate timely vendor coordination and prize disbursements\./gi, 'We request your review and financial sanction to facilitate timely arrangements.')
+      .trim();
+  });
 }

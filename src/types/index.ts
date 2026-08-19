@@ -71,7 +71,15 @@ export interface LetterData {
   subject: string;
   salutation: string;
   bodyParagraphs: string[];
+  bodyHtml?: string;
   keyDetailsTable?: {
+    headers: string[];
+    rows: string[][];
+  };
+  tablePosition?: number;
+  pageCount?: number;
+  page2Paragraphs?: string[];
+  page2Table?: {
     headers: string[];
     rows: string[][];
   };

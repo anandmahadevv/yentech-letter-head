@@ -29,6 +29,7 @@ import {
   exportToPng,
   exportToDocx,
 } from './services/exportService';
+import { condenseParagraphsToFit } from './services/aiGenerator';
 import {
   ZoomIn,
   ZoomOut,
@@ -219,13 +220,41 @@ export function App() {
     }
   };
 
-  // Direct Auto-Fit Document to 1 Page
+  // Direct Smart Auto-Fit Document to 1 Page
   const handleAutoFit = () => {
+    const fullText = (letterData.bodyParagraphs || []).join('\n\n');
+    let targetSize = 10.5;
+    if (fullText.length > 2000) targetSize = 8.5;
+    else if (fullText.length > 1400) targetSize = 9.25;
+    else if (fullText.length > 900) targetSize = 10.0;
+    else if (fullText.length > 500) targetSize = 10.75;
+    else targetSize = 11.5;
+
     setLetterData((prev) => ({
       ...prev,
-      fontSizePt: 10,
+      fontSizePt: targetSize,
+      lineSpacing: fullText.length > 1200 ? 'compact' : 'normal',
     }));
-    showToast('Document fitted to 1 page');
+    showToast(`Fitted to 1 page (${targetSize}pt font)`);
+  };
+
+  // AI Condense to Fit 1 Page
+  const handleAiCondense = async () => {
+    showToast('Condensing letter to fit 1 A4 page...');
+    try {
+      const condensed = await condenseParagraphsToFit(
+        letterData.bodyParagraphs,
+        adminSettings.geminiApiKey
+      );
+      setLetterData((prev) => ({
+        ...prev,
+        bodyParagraphs: condensed,
+        bodyHtml: undefined,
+      }));
+      showToast('Document condensed to fit 1 page');
+    } catch (e) {
+      showToast('Could not condense document');
+    }
   };
 
   // Make More Formal
@@ -361,6 +390,8 @@ export function App() {
           onExportPdf={handleExportPdf}
           onToggleFullscreen={handleToggleFullscreen}
           isFullscreen={isFullscreen}
+          onAutoFitPage={handleAutoFit}
+          onAiCondense={handleAiCondense}
         />
 
         {/* Center Canvas Studio */}
@@ -430,6 +461,7 @@ export function App() {
               onUpdateOrg={handleUpdateOrganization}
               onAutoFitPage={handleAutoFit}
               onMakeMoreFormal={handleMakeMoreFormal}
+              onAiCondense={handleAiCondense}
               showGrid={showGrid}
             />
           </div>
@@ -500,6 +532,7 @@ export function App() {
               onUpdateOrg={handleUpdateOrganization}
               onAutoFitPage={handleAutoFit}
               onMakeMoreFormal={handleMakeMoreFormal}
+              onAiCondense={handleAiCondense}
               showGrid={showGrid}
             />
           </div>
