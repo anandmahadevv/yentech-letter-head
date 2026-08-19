@@ -59,11 +59,11 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcodeInput === adminSettings.passcode || passcodeInput === 'admin123') {
+    if (passcodeInput === adminSettings.passcode) {
       setIsAuthenticated(true);
       setAuthError('');
     } else {
-      setAuthError('Incorrect admin passcode. Default is admin123');
+      setAuthError('Incorrect admin passcode.');
     }
   };
 
@@ -158,7 +158,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               <div>
                 <input
                   type="password"
-                  placeholder="Enter passcode (Default: admin123)"
+                  placeholder="Enter admin passcode"
                   value={passcodeInput}
                   onChange={(e) => setPasscodeInput(e.target.value)}
                   autoFocus
