@@ -41,7 +41,7 @@ export const DEFAULT_ORGANIZATIONS: Organization[] = [
 ];
 
 export const INITIAL_ADMIN_SETTINGS = {
-  passcode: 'admin@yentech.edu.in',
+  passcode: 'yentech@yset2026',
   geminiApiKey: '',
   allowAiStreaming: true,
   saveLetterHistory: true,
