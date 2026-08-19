@@ -20,7 +20,7 @@ export const Lockscreen: React.FC<LockscreenProps> = ({ onUnlock, correctPasscod
     setError(false);
 
     // Verify passcode (matches either configured admin passcode or master default)
-    const valid = passcode === correctPasscode || passcode === 'yentech@yset2026';
+    const valid = passcode === correctPasscode || passcode === 'admin@yentech.edu.in';
 
     if (valid) {
       setTimeout(() => {
